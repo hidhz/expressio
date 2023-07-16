@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Home</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      .container {
+        margin-top: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <form>
+        <div class="mb-3">
+          <label for="inputLink" class="form-label fs-5">Link produk</label>
+          <input id="inputLink" class="form-control" required />
+          <div class="form-text">
+            Scrapp hanya bisa untuk 1 link produk, tidak bisa langsung banyak.
+          </div>
+        </div>
+        <button id="sendLink" class="btn btn-primary">submit</button>
+      </form>
+      <div id="app" style="display: none"></div>
+      <div id="produk"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+      (function () {
+        // DATA BOLEH DIUBAH ------------------
+        const STOK = 20;
+        const KODE_KATEGORI = 100247;
+        const BERAT = 100;
+        const KODE_TOKO = "LBA";
+        // -------------------------------------
+        const button = document.querySelector("#sendLink");
+        const socket = io();
+        button.addEventListener("click", function () {
+          let link = document.querySelector("#inputLink");
+          socket.emit("getlink", link.value);
+        });
+        socket.on("data scrapp", (data) => {
+          document.getElementById("app").innerHTML = data;
+          getProduk();
+        });
+        function getProduk() {
+          const date = new Date();
+          // get element html produk
+          const produkElement = document.getElementById("produk");
+          // get element textcontent / data produk
+          let nama = document.querySelector(".css-1os9jjn").textContent;
+          nama = `${nama
+            .toUpperCase()
+            .replaceAll(".", "")
+            .replaceAll(",", "")
+            .replaceAll(
+              "-",
+              ""
+            )} / ${KODE_TOKO}${date.getHours()}${date.getMinutes()}${date.getSeconds()}`;
+          let harga = document.querySelector(".price").textContent;
+          harga = harga.slice(2).replaceAll(".", "");
+          harga = Number(harga);
+          harga = (harga / 100) * 20 + harga;
+          harga = parseInt(harga);
+          const desc = document.querySelector(".css-168ydy0 div").textContent;
+          const gambarArray = document.getElementsByClassName("css-1c345mg");
+          let gambar = [];
+          for (let i = 0; i < gambarArray.length; i++) {
+            let str = gambarArray[i].src.substring(0, 42);
+            if (str == "https://images.tokopedia.net/img/cache/100") {
+              let newstr = gambarArray[i].src;
+              newstr = newstr.replace("cache/1", "cache/5");
+              newstr = newstr.slice(0, newstr.length - 7);
+              gambar.push(newstr);
+            }
+          }
+          // add data to produk element
+          produkElement.innerHTML = toSheeet(nama, harga, desc, gambar);
+          const scriptURL =
+            "https://script.google.com/macros/s/AKfycbyKeCL7-e64fwx03mjipHRdGSDof5B_xAO__ZUNhx_sbwlPQCE3arD3LvvZBKoiUl40/exec";
+          const form = document.forms["submit-to-google-sheet"];
+
+          fetch(scriptURL, { method: "POST", body: new FormData(form) })
+            .then(
+              (res) =>
+                (document.getElementById("sukses").innerHTML = `
+                <div class="alert alert-success d-flex align-items-center" role="alert">
+                    <div>
+                        sukses menambahkkan data ke sheets!!!
+                    </div>
+                </div>
+                `)
+            )
+            .catch((err) => console.log(err));
+        }
+        function toSheeet(nama, harga, desc, gambar) {
+          const lendesc = gambar.length;
+
+          let gambarel = gambar.map((gb, i) => {
+            if (i !== 1) {
+              return `
+                <input name="foto_produk${i - 1}" type="hidden" value="${gb}">
+            `;
+            }
+          });
+          return `
+          <figure>
+            <blockquote class="blockquote">
+                <p>${nama}.</p>
+            </blockquote>
+            <figcaption class="blockquote-footer">
+                harga : <cite title="Source Title">${harga}</cite>
+            </figcaption>
+            </figure>
+            <p id="sukses"></p>
+            <form name="submit-to-google-sheet">
+                <input name="kategori" type="hidden" value="${KODE_KATEGORI}">
+                <input name="nama_produk" type="hidden" value="${nama}">
+                <input name="deskripsi_produk" type="hidden" value="${desc}">
+                <input name="harga" type="hidden" value="${harga}">
+                <input name="stok" type="hidden" value="${STOK}">
+                <input name="foto_sampul" type="hidden" value="${gambar[1]}">
+                ${gambarel}
+              <input name="berat" type="hidden" value="${BERAT}">
+              <input name="reguler" type="hidden" value="Aktif">
+            </form>
+          `;
+        }
+      })();
+    </script>
+  </body>
+</html>
